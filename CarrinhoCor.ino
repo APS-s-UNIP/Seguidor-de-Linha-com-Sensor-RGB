@@ -136,10 +136,9 @@ void estadoSensorCor() {
   Serial.print(verde);
   Serial.print(" Azul: ");
   Serial.print(azul);
-  delay(500);
 
   // Detecção da cor vermelha
-  if (vermelho >= 140 && vermelho <= 190 && verde >= 400 && verde <= 510 && azul >= 320 && azul <= 390) {  // Vermelho
+  if (vermelho >= 50 && vermelho <= 120 && verde >= 210 && verde <= 280 && azul >= 150 && azul <= 210) {  
     Serial.println(" -> Cor detectada: Vermelho");
     para();  // Garante que o carrinho pare
     podeAndar = false;  // Desativa o movimento
@@ -150,16 +149,17 @@ void estadoSensorCor() {
   }  
   
   // Detecção da cor verde
-  else if (vermelho >= 145 && vermelho <= 200 && verde >= 140 && verde <= 190 && azul >= 180 && azul <= 240) {  // Verde
+  else if (vermelho >= 300 && vermelho <= 380 && verde >= 210 && verde <= 260 && azul >= 190 && azul <= 250) {  // Verde
     Serial.println(" -> Cor detectada: Verde");
     podeAndar = true;  // Permite que o carrinho ande
     corVerdeDetectada = true;  // Marca que a cor verde foi detectada
+    corVermelhaDetectada = false; // Reseta a detecção do vermelho
     digitalWrite(LED_VM, LOW); // Apaga o LED vermelho
     digitalWrite(LED_VD, HIGH); // Acende o LED verde
   } 
 
   // Detecção da cor amarela
-  else if (vermelho >= 105 && vermelho <= 150 && verde >= 160 && verde <= 210 && azul >= 270 && azul <= 360) {  // Amarelo
+  else if (vermelho >= 25 && vermelho <= 70 && verde >= 40 && verde <= 80 && azul >= 80 && azul <= 120) {  // Amarelo
     Serial.println(" -> Cor detectada: Amarelo");
     // Pisca o LED vermelho, mas o carrinho continua em movimento
     if (!corVermelhaDetectada && corVerdeDetectada) {
@@ -171,7 +171,10 @@ void estadoSensorCor() {
   } 
   else {  // Cor desconhecida
     Serial.println(" -> Cor desconhecida");
-    digitalWrite(LED_VM, LOW);  // Desliga o LED vermelho
+    // O LED vermelho deve permanecer aceso se a cor vermelha foi detectada
+    if (corVermelhaDetectada) {
+      digitalWrite(LED_VM, HIGH);  // Mantém o LED vermelho aceso
+    }
     digitalWrite(LED_VD, LOW);  // Desliga o LED verde
   }
 }
@@ -180,11 +183,53 @@ void estadoSensorCor() {
 void estadoSensorInfra() {
   if (ultraS.dist() <= 6) {
     para();  // Para o carrinho se um objeto estiver próximo
+    // Pisca o LED verde
+    for (int i = 0; i < 5; i++) { // Pisca 5 vezes
+      digitalWrite(LED_VD, HIGH);
+      delay(250);
+      digitalWrite(LED_VD, LOW);
+      delay(250);
+    }
   } else if (corVerdeDetectada && podeAndar) {
     // Se a cor verde foi detectada e pode andar, continue se movendo
-    frente();
+    estadoEsq = digitalRead(SENSOR_ESQ);
+    estadoDir = digitalRead(SENSOR_DIR);
+    estadoMeio = digitalRead(SENSOR_MEIO);
     digitalWrite(LED_VD, HIGH); // Mantém o LED verde aceso enquanto o carrinho anda
-  } else {
+  
+    if(estadoEsq == 0 and estadoMeio == 0 and estadoDir == 0){
+      Serial.println("sensor esquerdo = 0, meio = 0 e direito = 0 segue em frente");
+      frente();
+    }
+    else if(estadoEsq == 0 and estadoMeio == 0 and estadoDir == 1){
+      Serial.println("sensor esquerdo = 0, meio = 0 e direito = 1 segue em direita frente");
+      direita();
+    }
+    else if(estadoEsq == 0 and estadoMeio == 1 and estadoDir == 0){
+      Serial.println("sensor esquerdo = 0, meio = 1 e direito = 0 segue em frente");
+      para();  
+    }
+    else if(estadoEsq == 0 and estadoMeio == 1 and estadoDir == 1){
+      Serial.println("sensor esquerdo = 0, meio = 1 e direito = 1 segue direita");
+      direita();
+    }
+    else if(estadoEsq == 1 and estadoMeio == 0 and estadoDir == 0){
+      Serial.println("sensor esquerdo = 1, meio = 0 e direito = 0 segue em esquerda frente");
+      esquerda();
+    }
+    else if(estadoEsq == 1 and estadoMeio == 1 and estadoDir == 0){
+      Serial.println("sensor esquerdo = 1, meio = 1 e direito = 0 segue em esquerda");
+      esquerda();
+    }
+    else if(estadoEsq == 1 and estadoMeio == 0 and estadoDir == 1){
+      Serial.println("sensor esquerdo = 1, meio = 0 e direito = 1 segue frente");
+      frente();
+    }
+    //else if(estadoEsq == 1 and estadoMeio == 1 and estadoDir == 1){
+      //Serial.println("sensor esquerdo = 1, meio = 1 e direito = 1 segue tras");
+      //tras();
+    //}
+  } else { // Essa linha foi adicionada para corrigir o erro
     para(); // Para o carrinho se não puder andar
     digitalWrite(LED_VD, LOW); // Desliga o LED verde se o carrinho não puder andar
   }
@@ -245,10 +290,4 @@ void setup() {
 void loop() {
   estadoSensorCor();  // Chama a função para detectar a cor e controlar os LEDs e o movimento
   estadoSensorInfra();  // Chama a função para controlar os sensores infravermelhos
-}
-
-//Função de testes do sensores e do leitor de RGB
-void funcTesteLoop() {
-  testeSensorInfra();
-  testeSensorUltra();
 }
